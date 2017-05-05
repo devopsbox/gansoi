@@ -15,6 +15,59 @@ var listChecks = Vue.component('list-checks', {
         };
     },
 
+    mounted: function() {
+        var check_id = this.id;
+
+        var now = new Date().getTime();
+
+        // We seed "first" by the time as of now. If we see an item that is
+        // older, we update first. This is to determine when the first
+        // evaluation period started. This should be safe as all evaluations
+        // start in the past.
+        var first = now;
+
+        var filter = function(item) {
+            // We piggyback on the filter function to determine the start
+            // time of all evaluations. It doesn't matter if this gets run
+            // again, we already set up the timeline.
+            var itemStart = new Date(item.start).getTime();
+            first = Math.min(itemStart, first);
+
+            return true;
+        };
+
+        var dataview = new vis.DataView(evaluations.dataset, {
+            filter: filter,
+            fields: {
+                id: 'id',
+                start: 'start',
+                end: 'end',
+                state: 'className',
+                check_id: 'group'
+            }
+        });
+
+        // One week ago default.
+        var start = now - (7*24*60*60*1000);
+
+        // If the first evaluation if newer than a week, we use that as a
+        // starting point instead.
+        start = Math.max(first, start);
+
+        var options = {
+            start: new Date(start),
+            end: new Date(now + (60*60*1000)), // one hour
+            editable: false,
+            type: 'background'
+        };
+
+        var timeline = new vis.Timeline(
+            this.$refs.timeline,
+            dataview,
+            checks.dataset,
+            options);
+    },
+
     computed: {
         sorted: function() {
             return checks.dataset.get().sort(function(a, b) {
